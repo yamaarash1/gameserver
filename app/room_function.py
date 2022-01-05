@@ -51,7 +51,6 @@ def _room_join(conn, room_id: int, select_difficulty: LiveDifficulty, user: Safe
         )
         res = result.one()
         room = {"id": res[0], "joined_user_account": res[1], "max_user_count": res[2], "is_dissolution": res[3]}
-        print(room)
         if(room["is_dissolution"]):
             res = {"join_room_result": 3}
         else:
@@ -76,9 +75,7 @@ def room_join(room_id: int, select_difficulty: LiveDifficulty, user: SafeUser) -
     with engine.begin() as conn:
         return _room_join(conn, room_id, select_difficulty, user)
 
-#selectでルームにいるプレーヤを検索、ルームがisStartedのカラムを追加、isStartedがtrueだったら2、isStartedがfalseだったら1、そもそもis_dissolutionがtrueなら3を"status"として返す
 def _room_wait(conn, room_id: int, user: SafeUser) -> RoomWaitResponse:
-    #userとroom_userをuserid = user.idでjoin
     room_user = []
     result = conn.execute(
         text("SELECT user_id, name, leader_card_id, select_difficulty, is_host FROM `user` INNER JOIN `room_user` ON user.id = room_user.user_id WHERE room_id = :room_id"),
@@ -108,3 +105,40 @@ def room_wait(room_id: int, user: SafeUser) -> RoomWaitResponse:
     with engine.begin() as conn:
         return _room_wait(conn, room_id, user)  
 
+def _room_start(conn, room_id: int, user: SafeUser):
+    host_room_user = conn.execute(
+            text("SELECT id, is_host FROM `room_user` WHERE `id`= :room_id AND `user_id` = :user_id"),
+            {"room_id": room_id, "user_id": user.id},
+    )
+    host = host_room_user.one()
+    if(host["is_host"]):
+        conn.execute(
+            text("UPDATE `room` SET is_started=TRUE WHERE `id` = :room_id"),
+            {"room_id": room_id},
+        )
+
+def room_start(room_id: int, user: SafeUser):
+    with engine.begin() as conn:
+        _room_start(conn, room_id, user)
+
+def _room_end(conn, room_id: int, judge_count_list: list[int], score: int, user: SafeUser):
+    target_room_result = conn.execute(
+            text("SELECT id, is_dissolution, joined_user_account FROM `room` WHERE `id`= :room_id"),
+            {"room_id": room_id},
+    ) 
+    target_room = target_room_result.one()
+    if(not target_room["is_dissolution"]):
+        conn.execute(
+            text("UPDATE `room` SET joined_user_account = :joined_user_account WHERE `id` = :room_id"),
+            {"room_id": room_id, "joined_user_account": target_room["joined_user_account"] - 1},
+        )
+    if(target_room["joined_user_account"] <= 1):
+        conn.execute(
+            text("UPDATE `room` SET is_dissolution=TRUE WHERE `id` = :room_id"),
+            {"room_id": room_id},
+        )
+
+
+def room_end(room_id: int, judge_count_list: list[int], score: int, user: SafeUser):
+    with engine.begin() as conn:
+        _room_end(conn, room_id, judge_count_list, score, user)
