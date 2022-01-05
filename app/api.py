@@ -106,6 +106,14 @@ class RoomWaitResponse(BaseModel):
     status: WaitRoomStatus
     room_user_list: list[RoomUser]
 
+class RoomStartRequest(BaseModel):
+    room_id: int
+
+class RoomEndRequest(BaseModel):
+    room_id: int
+    judge_count_list: list[int]
+    score: int
+
 @app.post("/room/create", response_model=RoomCreateResponse)
 def room_create_api(req: RoomCreateRequest, token: str = Depends(get_auth_token)):
     res = room_function.room_create(req.live_id, req.select_difficulty, token)
@@ -129,4 +137,12 @@ def room_wait_api(req: RoomWaitRequest, token: str = Depends(get_auth_token)):
     res = room_function.room_wait(req.room_id, user)
     return res
 
-    
+@app.post("/room/start")
+def room_start_api(req: RoomStartRequest, token: str = Depends(get_auth_token)):
+    user = user_me(token)
+    room_function.room_start(req.room_id, user)
+
+@app.post("/room/end")
+def room_end_api(req: RoomEndRequest, token: str = Depends(get_auth_token)):
+    user = user_me(token)
+    room_function.room_end(req.room_id, req.judge_count_list, req.score, user)
