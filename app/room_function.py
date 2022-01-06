@@ -173,3 +173,23 @@ def _room_result(conn, room_id: int, user: SafeUser) -> RoomResultResponse:
 def room_result(room_id: int, user: SafeUser) -> RoomResultResponse:
     with engine.begin() as conn:
         return _room_result(conn, room_id, user)
+
+#user_roomを削除
+def _room_leave(conn, room_id: int, user: SafeUser):
+    target_room_result = conn.execute(
+            text("SELECT id, is_dissolution, joined_user_account FROM `room` WHERE `id`= :room_id"),
+            {"room_id": room_id},
+    ) 
+    target_room = target_room_result.one()
+    conn.execute(
+        text("DELETE FROM `room_user` WHERE room_id = :room_id AND user_id = :user_id"),
+        {"room_id": room_id, "user_id": user.id}
+    )
+    conn.execute(
+        text("UPDATE `room` SET joined_user_account = :joined_user_account WHERE `id` = :room_id"),
+        {"room_id": room_id, "joined_user_account": target_room["joined_user_account"] - 1},
+    )
+
+def room_leave(room_id: int, user: SafeUser):
+    with engine.begin() as conn:
+        _room_leave(conn, room_id, user)

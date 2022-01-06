@@ -121,6 +121,10 @@ class RoomResultRequest(BaseModel):
 class RoomResultResponse(BaseModel):
     result_user_list: list[ResultUser] or list
 
+class RoomLeaveRequest(BaseModel):
+    room_id: int
+
+
 @app.post("/room/create", response_model=RoomCreateResponse)
 def room_create_api(req: RoomCreateRequest, token: str = Depends(get_auth_token)):
     res = room_function.room_create(req.live_id, req.select_difficulty, token)
@@ -159,3 +163,8 @@ def room_result_api(req: RoomResultRequest, token: str = Depends(get_auth_token)
     user = user_me(token)
     res = room_function.room_result(req.room_id, user)
     return res
+
+@app.post("/room/leave")
+def room_leave_api(req: RoomLeaveRequest, token: str = Depends(get_auth_token)):
+    user = user_me(token)
+    room_function.room_leave(req.room_id, user)
