@@ -11,17 +11,23 @@ from sqlalchemy.exc import NoResultFound
 from .db import engine
 from .room_model import LiveDifficulty, JoinRoomResult, WaitRoomStatus, RoomInfo, RoomUser, ResultUser, RoomWaitResponse, RoomResultResponse
 from .model import SafeUser
-def _room_create(conn, live_id: int, select_difficulty: str, owner_token: str) -> int:
+
+def _room_create(conn, live_id: int, select_difficulty: int, user: SafeUser, token: str) -> int:
     result = conn.execute(
-      text("INSERT INTO `room` (live_id, select_difficulty, owner_token) VALUES (:live_id, :select_difficulty, :owner_token)"),
-      {"live_id": live_id, "select_difficulty": select_difficulty, "owner_token": owner_token},
+      text("INSERT INTO `room` (live_id, select_difficulty, owner_token, joined_user_account, max_user_count) VALUES (:live_id, :select_difficulty, :owner_token, 1, 4)"),
+      {"live_id": live_id, "select_difficulty": select_difficulty, "owner_token": token},
+    )
+    hoge = conn.execute(
+        text("INSERT INTO `room_user` (user_id, room_id, select_difficulty, is_host) VALUES (:user_id, :room_id, :select_difficulty, TRUE) "),
+        {"user_id": user.id, "room_id": result.lastrowid, "select_difficulty": select_difficulty},
     )
     return {"room_id": result.lastrowid}
 
 
-def room_create(live_id: int, select_difficulty: LiveDifficulty, token: str) -> int:
+def room_create(live_id: int, select_difficulty: LiveDifficulty, user: SafeUser, token: str) -> int:
+    print(user)
     with engine.begin() as conn:
-        return _room_create(conn, live_id, select_difficulty.name, token)
+        return _room_create(conn, live_id, select_difficulty.value, user, token)
 
 
 def _room_list_get(conn, live_id: int) -> list[RoomInfo]:
@@ -101,9 +107,11 @@ def _room_wait(conn, room_id: int, user: SafeUser) -> RoomWaitResponse:
             status = 1
     return {"status": status, "room_user_list": room_user}
 
+
 def room_wait(room_id: int, user: SafeUser) -> RoomWaitResponse:
     with engine.begin() as conn:
         return _room_wait(conn, room_id, user)  
+
 
 def _room_start(conn, room_id: int, user: SafeUser):
     host_room_user = conn.execute(
@@ -116,10 +124,13 @@ def _room_start(conn, room_id: int, user: SafeUser):
             text("UPDATE `room` SET is_started=TRUE WHERE `id` = :room_id"),
             {"room_id": room_id},
         )
+    return {}
+
 
 def room_start(room_id: int, user: SafeUser):
     with engine.begin() as conn:
-        _room_start(conn, room_id, user)
+        return _room_start(conn, room_id, user)
+
 
 def _room_end(conn, room_id: int, judge_count_list: list[int], score: int, user: SafeUser):
     target_room_result = conn.execute(
@@ -141,11 +152,12 @@ def _room_end(conn, room_id: int, judge_count_list: list[int], score: int, user:
         text("UPDATE `room_user` SET score=:score, perfect=:perfect, great=:great, good=:good, bad=:bad, miss=:miss, is_end=TRUE WHERE `room_id` = :room_id AND `user_id` = :user_id"),
         {"score": score, "perfect": judge_count_list[0], "great": judge_count_list[1], "good": judge_count_list[2], "bad": judge_count_list[3], "miss": judge_count_list[4], "room_id": room_id, "user_id": user.id},
     )
+    return {}
 
 
 def room_end(room_id: int, judge_count_list: list[int], score: int, user: SafeUser):
     with engine.begin() as conn:
-        _room_end(conn, room_id, judge_count_list, score, user)
+        return _room_end(conn, room_id, judge_count_list, score, user)
 
 #roomとroom内に属してるuserのuser_roomテーブルをjoin
 #全員がis_end=trueならResultUserを返す動作、違うなら[]をreturn
@@ -189,7 +201,8 @@ def _room_leave(conn, room_id: int, user: SafeUser):
         text("UPDATE `room` SET joined_user_account = :joined_user_account WHERE `id` = :room_id"),
         {"room_id": room_id, "joined_user_account": target_room["joined_user_account"] - 1},
     )
+    return {}
 
 def room_leave(room_id: int, user: SafeUser):
     with engine.begin() as conn:
-        _room_leave(conn, room_id, user)
+        return _room_leave(conn, room_id, user)

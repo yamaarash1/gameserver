@@ -127,7 +127,8 @@ class RoomLeaveRequest(BaseModel):
 
 @app.post("/room/create", response_model=RoomCreateResponse)
 def room_create_api(req: RoomCreateRequest, token: str = Depends(get_auth_token)):
-    res = room_function.room_create(req.live_id, req.select_difficulty, token)
+    user = model.get_user_by_token(token)
+    res = room_function.room_create(req.live_id, req.select_difficulty, user, token)
     return res
 
 
@@ -136,35 +137,41 @@ def room_list_get_api(req: RoomListRequest):
     res = room_function.room_list_get(req.live_id)
     return res
 
+
 @app.post("/room/join", response_model=RoomJoinResponse)
 def join_room_api(req: RoomJoinRequest, token: str = Depends(get_auth_token)):
-    user = user_me(token)
+    user = model.get_user_by_token(token)
     res = room_function.room_join(req.room_id, req.select_difficulty, user)
     return res
 
+
 @app.post("/room/wait", response_model=RoomWaitResponse)
 def room_wait_api(req: RoomWaitRequest, token: str = Depends(get_auth_token)):
-    user = user_me(token)
+    user = model.get_user_by_token(token)
     res = room_function.room_wait(req.room_id, user)
+    print(res)
     return res
 
 @app.post("/room/start")
 def room_start_api(req: RoomStartRequest, token: str = Depends(get_auth_token)):
-    user = user_me(token)
-    room_function.room_start(req.room_id, user)
+    user = model.get_user_by_token(token)
+    res = room_function.room_start(req.room_id, user)
+    return res
 
 @app.post("/room/end")
 def room_end_api(req: RoomEndRequest, token: str = Depends(get_auth_token)):
-    user = user_me(token)
-    room_function.room_end(req.room_id, req.judge_count_list, req.score, user)
+    user = model.get_user_by_token(token)
+    res = room_function.room_end(req.room_id, req.judge_count_list, req.score, user)
+    return res
 
 @app.post("/room/result", response_model=RoomResultResponse)
 def room_result_api(req: RoomResultRequest, token: str = Depends(get_auth_token)):
-    user = user_me(token)
+    user = model.get_user_by_token(token)
     res = room_function.room_result(req.room_id, user)
     return res
 
 @app.post("/room/leave")
 def room_leave_api(req: RoomLeaveRequest, token: str = Depends(get_auth_token)):
-    user = user_me(token)
-    room_function.room_leave(req.room_id, user)
+    user = model.get_user_by_token(token)
+    res = room_function.room_leave(req.room_id, user)
+    return res
