@@ -49,3 +49,6 @@ class ResultUser(BaseModel):
 class RoomWaitResponse(BaseModel):
     status: WaitRoomStatus
     room_user_list: list[RoomUser]
+
+class RoomResultResponse(BaseModel):
+    result_user_list: list[ResultUser] or list

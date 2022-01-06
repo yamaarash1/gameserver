@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import NoResultFound
 
 from .db import engine
-from .room_model import LiveDifficulty, JoinRoomResult, WaitRoomStatus, RoomInfo, RoomUser, ResultUser, RoomWaitResponse
+from .room_model import LiveDifficulty, JoinRoomResult, WaitRoomStatus, RoomInfo, RoomUser, ResultUser, RoomWaitResponse, RoomResultResponse
 from .model import SafeUser
 def _room_create(conn, live_id: int, select_difficulty: str, owner_token: str) -> int:
     result = conn.execute(
@@ -137,8 +137,39 @@ def _room_end(conn, room_id: int, judge_count_list: list[int], score: int, user:
             text("UPDATE `room` SET is_dissolution=TRUE WHERE `id` = :room_id"),
             {"room_id": room_id},
         )
+    conn.execute(
+        text("UPDATE `room_user` SET score=:score, perfect=:perfect, great=:great, good=:good, bad=:bad, miss=:miss, is_end=TRUE WHERE `room_id` = :room_id AND `user_id` = :user_id"),
+        {"score": score, "perfect": judge_count_list[0], "great": judge_count_list[1], "good": judge_count_list[2], "bad": judge_count_list[3], "miss": judge_count_list[4], "room_id": room_id, "user_id": user.id},
+    )
 
 
 def room_end(room_id: int, judge_count_list: list[int], score: int, user: SafeUser):
     with engine.begin() as conn:
         _room_end(conn, room_id, judge_count_list, score, user)
+
+#roomとroom内に属してるuserのuser_roomテーブルをjoin
+#全員がis_end=trueならResultUserを返す動作、違うなら[]をreturn
+#全員のuser_idとscore,　各種判定結果をResultUserとして保存、リスト化
+def _room_result(conn, room_id: int, user: SafeUser) -> RoomResultResponse:
+    result = []
+    user_end_result = conn.execute(
+        text("SELECT is_end FROM room_user WHERE room_id=:room_id"),
+        {"room_id": room_id},
+    )
+    for end_result in user_end_result:
+        if(not end_result):
+            return {"result_user_list": []}
+    user_result = conn.execute(
+        text("SELECT room_user.perfect, room_user.great, room_user.good, room_user.bad, room_user.miss, room_user.user_id,  room_user.score FROM room_user INNER JOIN room ON room_user.room_id = room.id WHERE room.id = :room_id;"),
+        {"room_id": room_id},
+    )
+    for user_result in user_result:
+        judge_count_list = []
+        for i in range(0, 5):
+            judge_count_list.append(user_result[i])
+        result.append(ResultUser(user_id=user_result[5], judge_count_list=judge_count_list, score=user_result[6]))
+    return {"result_user_list": result}
+
+def room_result(room_id: int, user: SafeUser) -> RoomResultResponse:
+    with engine.begin() as conn:
+        return _room_result(conn, room_id, user)

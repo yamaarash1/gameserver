@@ -15,6 +15,13 @@ CREATE TABLE `room_user` (
   `user_id` int DEFAULT NULL,
   `room_id` int DEFAULT NULL,
   `is_host` boolean DEFAULT FALSE,
+  `is_end` boolean DEFAULT FALSE,
+  `perfect` int DEFAULT NULL,
+  `great` int DEFAULT NULL,
+  `good` int DEFAULT NULL,
+  `bad` int DEFAULT NULL,
+  `miss` int DEFAULT NULL,
+  `score` int DEFAULT NULL,
   PRIMARY KEY (`id`)
 );
 
@@ -31,7 +38,7 @@ CREATE TABLE `room` (
 );
 
 INSERT INTO user(name,token,leader_card_id) VALUES ('ほのか','asdfghjkl','12345');
-INSERT INTO user(name,token,leader_card_id) VALUES ('ことり','zxcv','88998');
+INSERT INTO user(name,token,leader_card_id) VALUES ('ことり','aaaa','88998');
 INSERT INTO user(name,token,leader_card_id) VALUES ('うみ','qwert','173248');
 INSERT INTO user(name,token,leader_card_id) VALUES ('user1','qwerta','17321');
 INSERT INTO user(name,token,leader_card_id) VALUES ('user2','qwertb','17322');
@@ -49,11 +56,11 @@ INSERT INTO room(live_id,joined_user_account,max_user_count,owner_token,is_start
 INSERT INTO room(live_id,joined_user_account,max_user_count,owner_token,is_started) VALUES (3, 1, 4, 'qwert',0);
 
 INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (1, 1, 1, 1);
-INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (2, 2, 1, 1);
-INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (3, 2, 1, 1);
-INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (4, 2, 1, 0);
-INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (5, 2, 1, 0);
-INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (6, 1, 1, 0);
+INSERT INTO room_user(user_id,room_id,select_difficulty,is_host,is_end,perfect,great,good,bad,miss,score) VALUES (2, 2, 1, 1, 1, 100, 10, 10, 10 ,10, 1000);
+INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (3, 3, 1, 1);
+INSERT INTO room_user(user_id,room_id,select_difficulty,is_host,is_end,perfect,great,good,bad,miss,score) VALUES (4, 2, 1, 0, 1, 100, 12, 11, 14 ,1, 1100);
+INSERT INTO room_user(user_id,room_id,select_difficulty,is_host,is_end,perfect,great,good,bad,miss,score) VALUES (5, 2, 1, 0, 1, 101, 13, 12, 15 ,2, 1200);
+INSERT INTO room_user(user_id,room_id,select_difficulty,is_host,is_end,perfect,great,good,bad,miss,score) VALUES (6, 2, 1, 0, 1, 102, 14, 15, 16 ,4, 1300);
 INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (7, 1, 1, 0);
 INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (8, 3, 1, 0);
 INSERT INTO room_user(user_id,room_id,select_difficulty,is_host) VALUES (9, 3, 1, 0);
