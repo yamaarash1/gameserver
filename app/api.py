@@ -149,14 +149,13 @@ def join_room_api(req: RoomJoinRequest, token: str = Depends(get_auth_token)):
 def room_wait_api(req: RoomWaitRequest, token: str = Depends(get_auth_token)):
     user = model.get_user_by_token(token)
     res = room_function.room_wait(req.room_id, user)
-    print(res)
     return res
 
 @app.post("/room/start")
 def room_start_api(req: RoomStartRequest, token: str = Depends(get_auth_token)):
     user = model.get_user_by_token(token)
-    res = room_function.room_start(req.room_id, user)
-    return res
+    room_function.room_start(req.room_id, user)
+    return {}
 
 @app.post("/room/end")
 def room_end_api(req: RoomEndRequest, token: str = Depends(get_auth_token)):
@@ -165,9 +164,8 @@ def room_end_api(req: RoomEndRequest, token: str = Depends(get_auth_token)):
     return res
 
 @app.post("/room/result", response_model=RoomResultResponse)
-def room_result_api(req: RoomResultRequest, token: str = Depends(get_auth_token)):
-    user = model.get_user_by_token(token)
-    res = room_function.room_result(req.room_id, user)
+def room_result_api(req: RoomResultRequest):
+    res = room_function.room_result(req.room_id)
     return res
 
 @app.post("/room/leave")

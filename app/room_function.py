@@ -13,11 +13,13 @@ from .room_model import LiveDifficulty, JoinRoomResult, WaitRoomStatus, RoomInfo
 from .model import SafeUser
 
 def _room_create(conn, live_id: int, select_difficulty: int, user: SafeUser, token: str) -> int:
+    #roomを作成
     result = conn.execute(
       text("INSERT INTO `room` (live_id, select_difficulty, owner_token, joined_user_account, max_user_count) VALUES (:live_id, :select_difficulty, :owner_token, 1, 4)"),
       {"live_id": live_id, "select_difficulty": select_difficulty, "owner_token": token},
     )
-    hoge = conn.execute(
+    #room_userを作成、作成したuserがhostなのでis_hostをtrue
+    conn.execute(
         text("INSERT INTO `room_user` (user_id, room_id, select_difficulty, is_host) VALUES (:user_id, :room_id, :select_difficulty, TRUE) "),
         {"user_id": user.id, "room_id": result.lastrowid, "select_difficulty": select_difficulty},
     )
@@ -33,12 +35,13 @@ def room_create(live_id: int, select_difficulty: LiveDifficulty, user: SafeUser,
 def _room_list_get(conn, live_id: int) -> list[RoomInfo]:
     room_info = []
     result = conn.execute(
-      text("SELECT `id` AS room_id, `live_id`, `joined_user_account`, `max_user_count` FROM `room` WHERE `live_id`= :live_id"),
+      text("SELECT `id` AS room_id, `live_id`, `joined_user_account`, `max_user_count`, `is_started` FROM `room` WHERE `live_id`= :live_id"),
       {"live_id": live_id},
     )
     try:
         for row in result:
-            room_info.append(RoomInfo.from_orm(row))
+            if(not row["is_started"]):
+                room_info.append(RoomInfo.from_orm(row))
     except NoResultFound:
         return None
     return {"room_info_list": room_info}
@@ -115,7 +118,7 @@ def room_wait(room_id: int, user: SafeUser) -> RoomWaitResponse:
 
 def _room_start(conn, room_id: int, user: SafeUser):
     host_room_user = conn.execute(
-            text("SELECT id, is_host FROM `room_user` WHERE `id`= :room_id AND `user_id` = :user_id"),
+            text("SELECT id, is_host FROM `room_user` WHERE `room_id`= :room_id AND `user_id` = :user_id"),
             {"room_id": room_id, "user_id": user.id},
     )
     host = host_room_user.one()
@@ -162,7 +165,7 @@ def room_end(room_id: int, judge_count_list: list[int], score: int, user: SafeUs
 #roomとroom内に属してるuserのuser_roomテーブルをjoin
 #全員がis_end=trueならResultUserを返す動作、違うなら[]をreturn
 #全員のuser_idとscore,　各種判定結果をResultUserとして保存、リスト化
-def _room_result(conn, room_id: int, user: SafeUser) -> RoomResultResponse:
+def _room_result(conn, room_id: int) -> RoomResultResponse:
     result = []
     user_end_result = conn.execute(
         text("SELECT is_end FROM room_user WHERE room_id=:room_id"),
@@ -182,9 +185,9 @@ def _room_result(conn, room_id: int, user: SafeUser) -> RoomResultResponse:
         result.append(ResultUser(user_id=user_result[5], judge_count_list=judge_count_list, score=user_result[6]))
     return {"result_user_list": result}
 
-def room_result(room_id: int, user: SafeUser) -> RoomResultResponse:
+def room_result(room_id: int) -> RoomResultResponse:
     with engine.begin() as conn:
-        return _room_result(conn, room_id, user)
+        return _room_result(conn, room_id)
 
 #user_roomを削除
 def _room_leave(conn, room_id: int, user: SafeUser):
@@ -201,6 +204,16 @@ def _room_leave(conn, room_id: int, user: SafeUser):
         text("UPDATE `room` SET joined_user_account = :joined_user_account WHERE `id` = :room_id"),
         {"room_id": room_id, "joined_user_account": target_room["joined_user_account"] - 1},
     )
+    target_room_result = conn.execute(
+            text("SELECT id, joined_user_account FROM `room` WHERE `id`= :room_id"),
+            {"room_id": room_id},
+    ) 
+    target_room = target_room_result.one()
+    if(target_room["joined_user_account"] <= 0):
+        conn.execute(
+            text("DELETE FROM `room` WHERE `id` = :room_id"),
+            {"room_id": room_id},
+        )
     return {}
 
 def room_leave(room_id: int, user: SafeUser):
