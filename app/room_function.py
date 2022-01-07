@@ -214,6 +214,20 @@ def _room_leave(conn, room_id: int, user: SafeUser):
             text("DELETE FROM `room` WHERE `id` = :room_id"),
             {"room_id": room_id},
         )
+    else:
+        pre_host_user = conn.execute(
+            text("SELECT `id` FROM `user` INNER JOIN `room_user` ON user.id=room_user.user_id WHERE room_id = :room_id LIMIT 1"),
+            {"room_id": room_id}
+        )
+        host_user = pre_host_user.one()
+        conn.execute(
+            text("UPDATE `room_user` SET is_host = TRUE WHERE room_id = :room_id AND user_id = :user_id"),
+            {"room_id": room_id, "user_id": host_user["id"]}
+        )
+        conn.execute(
+            text("UPDATE `room` SET owner_token = :owner_token WHERE room_id = :room_id"),
+            {"room_id": room_id, "owner_token": host_user["token"]}
+        )
     return {}
 
 def room_leave(room_id: int, user: SafeUser):
